@@ -84,18 +84,22 @@ class CPU:
             operand_a = self.ram_read(self.PC + 1)
             operand_b = self.ram_read(self.PC + 2)
 
+            inst_len = (self.ram_read(IR) >> 6) + 1
+
             if self.ram_read(IR) == self.HLT:
                 running = False
                 return
             elif self.ram_read(IR) == self.LDI:
                 self.register[operand_a] = operand_b
-                self.PC += 3
+                # self.PC += 3
             elif self.ram_read(IR) == self.PRN:
                 print(self.register[operand_a])
-                self.PC += 2
+                # self.PC += 2
             else:
                 running = False
                 print(f"Invalid instruction {IR}")
+
+            self.PC += inst_len
                 
 cpu = CPU()
 cpu.load()
