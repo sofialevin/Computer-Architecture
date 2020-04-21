@@ -5,6 +5,9 @@ import sys
 class CPU:
     """Main CPU class."""
 
+    HLT = 1
+    LDI = 130
+
     def __init__(self):
         """Construct a new CPU."""
         self.ram = [0] * 256
@@ -15,7 +18,7 @@ class CPU:
 
         return self.ram[address]
 
-    def ram_write(self, value, address)
+    def ram_write(self, value, address):
 
         ram[address] = value
 
@@ -72,4 +75,21 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+
+        running = True
+
+        while running:
+            IR = self.PC
+            operand_a = self.ram_read(self.PC + 0b1)
+            operand_b = self.ram_read(self.PC + 0b10)
+            if IR == self.HLT:
+                running = False
+                return
+            elif IR == self.LDI:
+                self.register[operand_a] = operand_b
+            else:
+                print(f"Invalid instruction {IR}")
+                running = False
+                
+cpu = CPU()
+cpu.run()
