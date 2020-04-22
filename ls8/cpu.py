@@ -2,6 +2,8 @@
 
 import sys
 
+program_filename = sys.argv[1]
+
 class CPU:
     """Main CPU class."""
 
@@ -19,30 +21,24 @@ class CPU:
 
         return self.ram[address]
 
-    def ram_write(self, value, address):
+    def ram_write(self, address, value):
 
-        ram[address] = value
+        self.ram[address] = value
 
     def load(self):
         """Load a program into memory."""
 
         address = 0
 
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+        with open(program_filename) as program:
+            for instruction in program:
+                instruction = instruction.split('#')
+                instruction = instruction[0].strip()
+                if instruction == '':
+                    continue
+                    
+                self.ram_write(address, int(instruction[:8], 2))
+                address += 1
 
 
     def alu(self, op, reg_a, reg_b):
@@ -84,7 +80,7 @@ class CPU:
             operand_a = self.ram_read(self.PC + 1)
             operand_b = self.ram_read(self.PC + 2)
 
-            inst_len = (self.ram_read(IR) >> 6) + 1
+            inst_len = ((self.ram_read(IR) & 0b11000000) >> 6) + 1
 
             if self.ram_read(IR) == self.HLT:
                 running = False
