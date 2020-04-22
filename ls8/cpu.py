@@ -10,11 +10,12 @@ class CPU:
     HLT = 0b00000001
     LDI = 0b10000010
     PRN = 0b01000111
+    MUL = 0b10100010
 
     def __init__(self):
         """Construct a new CPU."""
         self.ram = [0] * 256
-        self.register = [0] * 8
+        self.reg = [0] * 8
         self.PC = 0
 
     def ram_read(self, address):
@@ -46,6 +47,8 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         #elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
@@ -86,11 +89,13 @@ class CPU:
                 running = False
                 return
             elif self.ram_read(IR) == self.LDI:
-                self.register[operand_a] = operand_b
+                self.reg[operand_a] = operand_b
                 # self.PC += 3
             elif self.ram_read(IR) == self.PRN:
-                print(self.register[operand_a])
+                print(self.reg[operand_a])
                 # self.PC += 2
+            elif self.ram_read(IR) == self.MUL:
+                self.alu("MUL", operand_a, operand_b)
             else:
                 running = False
                 print(f"Invalid instruction {IR}")
