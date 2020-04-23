@@ -4,15 +4,15 @@ import sys
 
 program_filename = sys.argv[1]
 
+HLT = 0b00000001
+LDI = 0b10000010
+PRN = 0b01000111
+MUL = 0b10100010
+PUSH = 0b01000101
+POP = 0b01000110
+
 class CPU:
     """Main CPU class."""
-
-    HLT = 0b00000001
-    LDI = 0b10000010
-    PRN = 0b01000111
-    MUL = 0b10100010
-    PUSH = 0b01000101
-    POP = 0b01000110
 
     def __init__(self):
         """Construct a new CPU."""
@@ -20,6 +20,15 @@ class CPU:
         self.reg = [0] * 8
         self.PC = 0
         self.SP = 7
+        self.reg[self.SP] = 0xF3
+        self.running = False
+        self.branchtable = {}
+        self.branchtable[HLT] = self.handle_HLT
+        self.branchtable[LDI] = self.handle_LDI
+        self.branchtable[PRN] = self.handle_PRN
+        self.branchtable[MUL] = self.handle_MUL
+        self.branchtable[PUSH] = self.handle_PUSH
+        self.branchtable[POP] = self.handle_POP
 
     def ram_read(self, address):
 
@@ -76,43 +85,43 @@ class CPU:
 
         print()
 
+    def handle_HLT(self, operand_a, operand_b):
+        self.running = False
+
+    def handle_LDI(self, operand_a, operand_b):
+        self.reg[operand_a] = operand_b
+
+    def handle_PRN(self, operand_a, operand_b):
+        print(self.reg[operand_a])
+
+    def handle_MUL(self, operand_a, operand_b):
+        self.alu("MUL", operand_a, operand_b)
+
+    def handle_POP(self, operand_a, operand_b):
+        self.reg[operand_a] = self.ram[self.reg[self.SP]]
+
+        self.reg[self.SP] += 1
+
+    def handle_PUSH(self, operand_a, _):
+        self.reg[self.SP] -= 1
+
+        self.ram[self.reg[self.SP]] = self.reg[operand_a]
+
     def run(self):
         """Run the CPU."""
 
-        running = True
+        self.running = True
 
-        self.reg[self.SP] = 0xF3
-
-        while running:
-            IR = self.PC
+        while self.running:
+            IR = self.ram_read(self.PC)
             operand_a = self.ram_read(self.PC + 1)
             operand_b = self.ram_read(self.PC + 2)
 
-            inst_len = ((self.ram_read(IR) & 0b11000000) >> 6) + 1
+            inst_len = ((IR & 0b11000000) >> 6) + 1
 
-            if self.ram_read(IR) == self.HLT:
-                running = False
-                return
-            elif self.ram_read(IR) == self.LDI:
-                self.reg[operand_a] = operand_b
-                # self.PC += 3
-            elif self.ram_read(IR) == self.PRN:
-                print(self.reg[operand_a])
-                # self.PC += 2
-            elif self.ram_read(IR) == self.MUL:
-                self.alu("MUL", operand_a, operand_b)
-            elif self.ram_read(IR) == self.POP:
-                self.reg[operand_a] = self.ram[self.reg[self.SP]]
-
-                self.reg[self.SP] += 1
-
-            elif self.ram_read(IR) == self.PUSH:
-                self.reg[self.SP] -= 1
-
-                self.ram[self.reg[self.SP]] = self.reg[operand_a]
-
-            else:
-                running = False
+            try:
+                self.branchtable[IR](operand_a, operand_b)
+            except:
                 print(f"Invalid instruction {IR}")
 
             self.PC += inst_len
