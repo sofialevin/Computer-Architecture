@@ -11,12 +11,15 @@ class CPU:
     LDI = 0b10000010
     PRN = 0b01000111
     MUL = 0b10100010
+    PUSH = 0b01000101
+    POP = 0b01000110
 
     def __init__(self):
         """Construct a new CPU."""
         self.ram = [0] * 256
         self.reg = [0] * 8
         self.PC = 0
+        self.SP = 7
 
     def ram_read(self, address):
 
@@ -78,6 +81,8 @@ class CPU:
 
         running = True
 
+        self.reg[self.SP] = 0xF3
+
         while running:
             IR = self.PC
             operand_a = self.ram_read(self.PC + 1)
@@ -96,6 +101,16 @@ class CPU:
                 # self.PC += 2
             elif self.ram_read(IR) == self.MUL:
                 self.alu("MUL", operand_a, operand_b)
+            elif self.ram_read(IR) == self.POP:
+                self.reg[operand_a] = self.ram[self.reg[self.SP]]
+
+                self.reg[self.SP] += 1
+
+            elif self.ram_read(IR) == self.PUSH:
+                self.reg[self.SP] -= 1
+
+                self.ram[self.reg[self.SP]] = self.reg[operand_a]
+
             else:
                 running = False
                 print(f"Invalid instruction {IR}")
