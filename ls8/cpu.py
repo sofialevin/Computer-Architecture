@@ -10,6 +10,9 @@ PRN = 0b01000111
 MUL = 0b10100010
 PUSH = 0b01000101
 POP = 0b01000110
+CALL = 0b01010000
+RET = 0b00010001
+ADD = 0b10100000
 
 class CPU:
     """Main CPU class."""
@@ -29,6 +32,9 @@ class CPU:
         self.branchtable[MUL] = self.handle_MUL
         self.branchtable[PUSH] = self.handle_PUSH
         self.branchtable[POP] = self.handle_POP
+        self.branchtable[CALL] = self.handle_CALL
+        self.branchtable[RET] = self.handle_RET
+        self.branchtable[ADD] = self.handle_ADD
 
     def ram_read(self, address):
 
@@ -97,15 +103,35 @@ class CPU:
     def handle_MUL(self, operand_a, operand_b):
         self.alu("MUL", operand_a, operand_b)
 
+    def handle_ADD(self, operand_a, operand_b):
+        self.alu("ADD", operand_a, operand_b)
+
     def handle_POP(self, operand_a, operand_b):
         self.reg[operand_a] = self.ram[self.reg[self.SP]]
 
         self.reg[self.SP] += 1
 
-    def handle_PUSH(self, operand_a, _):
+    def handle_PUSH(self, operand_a, operand_b):
         self.reg[self.SP] -= 1
 
         self.ram[self.reg[self.SP]] = self.reg[operand_a]
+
+    def handle_CALL(self, operand_a, operand_b):
+        return_addr = self.PC + 2
+
+        self.reg[self.SP] -= 1
+        self.ram[self.reg[self.SP]] = return_addr
+
+        reg_num = self.ram[self.PC + 1]
+        dest_addr = self.reg[reg_num]
+
+        self.PC = dest_addr
+
+    def handle_RET(self, operand_a, operand_b):
+        return_addr = self.ram[self.reg[self.SP]]
+        self.reg[self.SP] += 1
+
+        self.PC = return_addr
 
     def run(self):
         """Run the CPU."""
@@ -118,13 +144,16 @@ class CPU:
             operand_b = self.ram_read(self.PC + 2)
 
             inst_len = ((IR & 0b11000000) >> 6) + 1
+            sets_pc = (IR & 0b10000) >> 4
 
             try:
                 self.branchtable[IR](operand_a, operand_b)
             except:
                 print(f"Invalid instruction {IR}")
+                sys.exit()
 
-            self.PC += inst_len
+            if sets_pc != 1:
+                self.PC += inst_len
                 
 cpu = CPU()
 cpu.load()
