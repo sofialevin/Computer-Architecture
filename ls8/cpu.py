@@ -13,6 +13,7 @@ POP = 0b01000110
 CALL = 0b01010000
 RET = 0b00010001
 ADD = 0b10100000
+CMP = 0b10100111
 
 class CPU:
     """Main CPU class."""
@@ -23,6 +24,7 @@ class CPU:
         self.reg = [0] * 8
         self.PC = 0
         self.SP = 7
+        self.FL = 0b00000000
         self.reg[self.SP] = 0xF3
         self.running = False
         self.branchtable = {}
@@ -35,6 +37,7 @@ class CPU:
         self.branchtable[CALL] = self.handle_CALL
         self.branchtable[RET] = self.handle_RET
         self.branchtable[ADD] = self.handle_ADD
+        self.branchtable[CMP] = self.handle_CMP
 
     def ram_read(self, address):
 
@@ -67,6 +70,17 @@ class CPU:
             self.reg[reg_a] += self.reg[reg_b]
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "CMP":
+            if self.reg[reg_a] == self.reg[reg_b]:
+                self.FL = 0b100
+                #set the Equal E flag to 1, otherwise set it to 0.
+            elif self.reg[reg_a] < self.reg[reg_b]:
+                self.FL = 0b10
+                # set the Less-than L flag to 1, otherwise set it to 0.
+            else:
+                self.FL = 0b1
+                # set the Greater-than G flag to 1, otherwise set it to 0.
+
         #elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
@@ -102,6 +116,9 @@ class CPU:
 
     def handle_MUL(self, operand_a, operand_b):
         self.alu("MUL", operand_a, operand_b)
+    
+    def handle_CMP(self, operand_a, operand_b):
+        self.alu("CMP", operand_a, operand_b)
 
     def handle_ADD(self, operand_a, operand_b):
         self.alu("ADD", operand_a, operand_b)
