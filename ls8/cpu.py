@@ -195,7 +195,3 @@ class CPU:
 
             if sets_pc != 1:
                 self.PC += inst_len
-                
-cpu = CPU()
-cpu.load()
-cpu.run()
