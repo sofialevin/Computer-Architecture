@@ -15,6 +15,8 @@ RET = 0b00010001
 ADD = 0b10100000
 CMP = 0b10100111
 JMP = 0b01010100
+JEQ = 0b01010101
+JNE = 0b01010110
 
 class CPU:
     """Main CPU class."""
@@ -40,6 +42,8 @@ class CPU:
         self.branchtable[ADD] = self.handle_ADD
         self.branchtable[CMP] = self.handle_CMP
         self.branchtable[JMP] = self.handle_JMP
+        self.branchtable[JEQ] = self.handle_JEQ
+        self.branchtable[JNE] = self.handle_JNE
 
     def ram_read(self, address):
 
@@ -73,14 +77,14 @@ class CPU:
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
         elif op == "CMP":
-            if self.reg[reg_a] == self.reg[reg_b]:
-                self.FL = 0b100
+            if self.reg[reg_a] < self.reg[reg_b]:
+                self.FL = 0b00000100
                 #set the Equal E flag to 1, otherwise set it to 0.
-            elif self.reg[reg_a] < self.reg[reg_b]:
-                self.FL = 0b10
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                self.FL = 0b00000010
                 # set the Less-than L flag to 1, otherwise set it to 0.
             else:
-                self.FL = 0b1
+                self.FL = 0b00000001
                 # set the Greater-than G flag to 1, otherwise set it to 0.
 
         #elif op == "SUB": etc
@@ -147,15 +151,28 @@ class CPU:
         self.PC = dest_addr
 
     def handle_RET(self, operand_a, operand_b):
-        return_addr = self.ram[self.reg[self.PC + 1]]
-
-        self.PC = return_addr
-    
-    def handle_JMP(self, operand_a, operand_b):
         return_addr = self.ram[self.reg[self.SP]]
         self.reg[self.SP] += 1
 
         self.PC = return_addr
+    
+    def handle_JMP(self, operand_a, operand_b):
+        return_addr = self.reg[operand_a]
+
+        self.PC = return_addr
+
+    def handle_JEQ(self, operand_a, operand_b):
+        if (self.FL & 0b1) == 1:
+            self.handle_JMP(operand_a, operand_b)
+
+        else:
+            self.PC = self.PC + 2
+
+    def handle_JNE(self, operand_a, operand_b):
+        if (self.FL & 0b1) == 0:
+            self.handle_JMP(operand_a, operand_b)
+        else:
+            self.PC = self.PC + 2
 
     def run(self):
         """Run the CPU."""
