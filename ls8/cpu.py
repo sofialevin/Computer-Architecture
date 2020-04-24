@@ -14,6 +14,7 @@ CALL = 0b01010000
 RET = 0b00010001
 ADD = 0b10100000
 CMP = 0b10100111
+JMP = 0b01010100
 
 class CPU:
     """Main CPU class."""
@@ -38,6 +39,7 @@ class CPU:
         self.branchtable[RET] = self.handle_RET
         self.branchtable[ADD] = self.handle_ADD
         self.branchtable[CMP] = self.handle_CMP
+        self.branchtable[JMP] = self.handle_JMP
 
     def ram_read(self, address):
 
@@ -145,6 +147,11 @@ class CPU:
         self.PC = dest_addr
 
     def handle_RET(self, operand_a, operand_b):
+        return_addr = self.ram[self.reg[self.PC + 1]]
+
+        self.PC = return_addr
+    
+    def handle_JMP(self, operand_a, operand_b):
         return_addr = self.ram[self.reg[self.SP]]
         self.reg[self.SP] += 1
 
