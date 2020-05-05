@@ -2,33 +2,71 @@
 
 import sys
 
+program_filename = sys.argv[1]
+
+HLT = 0b00000001
+LDI = 0b10000010
+PRN = 0b01000111
+MUL = 0b10100010
+PUSH = 0b01000101
+POP = 0b01000110
+CALL = 0b01010000
+RET = 0b00010001
+ADD = 0b10100000
+CMP = 0b10100111
+JMP = 0b01010100
+JEQ = 0b01010101
+JNE = 0b01010110
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.ram = [0] * 256
+        self.reg = [0] * 8
+        self.PC = 0
+        self.SP = 7
+        self.FL = 0b00000000
+        self.reg[self.SP] = 0xF3
+        self.running = False
+        self.branchtable = {}
+        self.branchtable[HLT] = self.handle_HLT
+        self.branchtable[LDI] = self.handle_LDI
+        self.branchtable[PRN] = self.handle_PRN
+        self.branchtable[MUL] = self.handle_MUL
+        self.branchtable[PUSH] = self.handle_PUSH
+        self.branchtable[POP] = self.handle_POP
+        self.branchtable[CALL] = self.handle_CALL
+        self.branchtable[RET] = self.handle_RET
+        self.branchtable[ADD] = self.handle_ADD
+        self.branchtable[CMP] = self.handle_CMP
+        self.branchtable[JMP] = self.handle_JMP
+        self.branchtable[JEQ] = self.handle_JEQ
+        self.branchtable[JNE] = self.handle_JNE
+
+    def ram_read(self, address):
+
+        return self.ram[address]
+
+    def ram_write(self, address, value):
+
+        self.ram[address] = value
 
     def load(self):
         """Load a program into memory."""
 
         address = 0
 
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
-
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+        with open(program_filename) as program:
+            for instruction in program:
+                instruction = instruction.split('#')
+                instruction = instruction[0].strip()
+                if instruction == '':
+                    continue
+                    
+                self.ram_write(address, int(instruction[:8], 2))
+                address += 1
 
 
     def alu(self, op, reg_a, reg_b):
@@ -36,6 +74,19 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "CMP":
+            if self.reg[reg_a] < self.reg[reg_b]:
+                self.FL = 0b00000100
+                #set the Equal E flag to 1, otherwise set it to 0.
+            elif self.reg[reg_a] > self.reg[reg_b]:
+                self.FL = 0b00000010
+                # set the Less-than L flag to 1, otherwise set it to 0.
+            else:
+                self.FL = 0b00000001
+                # set the Greater-than G flag to 1, otherwise set it to 0.
+
         #elif op == "SUB": etc
         else:
             raise Exception("Unsupported ALU operation")
@@ -60,6 +111,87 @@ class CPU:
 
         print()
 
+    def handle_HLT(self, operand_a, operand_b):
+        self.running = False
+
+    def handle_LDI(self, operand_a, operand_b):
+        self.reg[operand_a] = operand_b
+
+    def handle_PRN(self, operand_a, operand_b):
+        print(self.reg[operand_a])
+
+    def handle_MUL(self, operand_a, operand_b):
+        self.alu("MUL", operand_a, operand_b)
+    
+    def handle_CMP(self, operand_a, operand_b):
+        self.alu("CMP", operand_a, operand_b)
+
+    def handle_ADD(self, operand_a, operand_b):
+        self.alu("ADD", operand_a, operand_b)
+
+    def handle_POP(self, operand_a, operand_b):
+        self.reg[operand_a] = self.ram[self.reg[self.SP]]
+
+        self.reg[self.SP] += 1
+
+    def handle_PUSH(self, operand_a, operand_b):
+        self.reg[self.SP] -= 1
+
+        self.ram[self.reg[self.SP]] = self.reg[operand_a]
+
+    def handle_CALL(self, operand_a, operand_b):
+        return_addr = self.PC + 2
+
+        self.reg[self.SP] -= 1
+        self.ram[self.reg[self.SP]] = return_addr
+
+        reg_num = self.ram[self.PC + 1]
+        dest_addr = self.reg[reg_num]
+
+        self.PC = dest_addr
+
+    def handle_RET(self, operand_a, operand_b):
+        return_addr = self.ram[self.reg[self.SP]]
+        self.reg[self.SP] += 1
+
+        self.PC = return_addr
+    
+    def handle_JMP(self, operand_a, operand_b):
+        return_addr = self.reg[operand_a]
+
+        self.PC = return_addr
+
+    def handle_JEQ(self, operand_a, operand_b):
+        if (self.FL & 0b1) == 1:
+            self.handle_JMP(operand_a, operand_b)
+
+        else:
+            self.PC = self.PC + 2
+
+    def handle_JNE(self, operand_a, operand_b):
+        if (self.FL & 0b1) == 0:
+            self.handle_JMP(operand_a, operand_b)
+        else:
+            self.PC = self.PC + 2
+
     def run(self):
         """Run the CPU."""
-        pass
+
+        self.running = True
+
+        while self.running:
+            IR = self.ram_read(self.PC)
+            operand_a = self.ram_read(self.PC + 1)
+            operand_b = self.ram_read(self.PC + 2)
+
+            inst_len = ((IR & 0b11000000) >> 6) + 1
+            sets_pc = (IR & 0b10000) >> 4
+
+            try:
+                self.branchtable[IR](operand_a, operand_b)
+            except:
+                print(f"Invalid instruction {IR}")
+                sys.exit()
+
+            if sets_pc != 1:
+                self.PC += inst_len
